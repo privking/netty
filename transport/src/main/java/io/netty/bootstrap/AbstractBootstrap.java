@@ -56,7 +56,9 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
     @SuppressWarnings("unchecked")
     static final Map.Entry<AttributeKey<?>, Object>[] EMPTY_ATTRIBUTE_ARRAY = new Map.Entry[0];
 
+    //bossGroup
     volatile EventLoopGroup group;
+    //获取到channel的工厂，通过反射生产实例
     @SuppressWarnings("deprecation")
     private volatile ChannelFactory<? extends C> channelFactory;
     private volatile SocketAddress localAddress;
@@ -104,8 +106,10 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
      * The {@link Class} which is used to create {@link Channel} instances from.
      * You either use this or {@link #channelFactory(io.netty.channel.ChannelFactory)} if your
      * {@link Channel} implementation has no no-args constructor.
+     * ReflectiveChannelFactory获取无参构造函数创建实例的factory
      */
     public B channel(Class<? extends C> channelClass) {
+        //通过class,反射获取空参构造器，生产实例
         return channelFactory(new ReflectiveChannelFactory<C>(
                 ObjectUtil.checkNotNull(channelClass, "channelClass")
         ));
@@ -169,6 +173,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
     /**
      * Allow to specify a {@link ChannelOption} which is used for the {@link Channel} instances once they got
      * created. Use a value of {@code null} to remove a previous set {@link ChannelOption}.
+     * 存放到map集合中
      */
     public <T> B option(ChannelOption<T> option, T value) {
         ObjectUtil.checkNotNull(option, "option");
@@ -201,6 +206,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
      * call the super method in that case.
      */
     public B validate() {
+        //判断bossGroup
         if (group == null) {
             throw new IllegalStateException("group not set");
         }
@@ -264,6 +270,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
      * Create a new {@link Channel} and bind it.
      */
     public ChannelFuture bind(SocketAddress localAddress) {
+        //校验参数
         validate();
         return doBind(ObjectUtil.checkNotNull(localAddress, "localAddress"));
     }
@@ -278,6 +285,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
         if (regFuture.isDone()) {
             // At this point we know that the registration was complete and successful.
             ChannelPromise promise = channel.newPromise();
+            //最终是调用serverSocketChannel.bind
             doBind0(regFuture, channel, localAddress, promise);
             return promise;
         } else {
@@ -307,7 +315,10 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
     final ChannelFuture initAndRegister() {
         Channel channel = null;
         try {
+            //NioServerSocketChannel
+            //注意构造方法执行流程
             channel = channelFactory.newChannel();
+            //初始化serverSocketChannel
             init(channel);
         } catch (Throwable t) {
             if (channel != null) {
@@ -319,7 +330,9 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
             // as the Channel is not registered yet we need to force the usage of the GlobalEventExecutor
             return new DefaultChannelPromise(new FailedChannel(), GlobalEventExecutor.INSTANCE).setFailure(t);
         }
-
+        //group->EventLoopGroup
+        //chooser.next().register(channel);
+        //AbstractChannel$AbstractUnsafe.register
         ChannelFuture regFuture = config().group().register(channel);
         if (regFuture.cause() != null) {
             if (channel.isRegistered()) {
@@ -349,6 +362,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
 
         // This method is invoked before channelRegistered() is triggered.  Give user handlers a chance to set up
         // the pipeline in its channelRegistered() implementation.
+        //添加到任务队列
         channel.eventLoop().execute(new Runnable() {
             @Override
             public void run() {
@@ -387,6 +401,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
 
     final Map.Entry<ChannelOption<?>, Object>[] newOptionsArray() {
         synchronized (options) {
+            //将option保存到EMPTY_OPTION_ARRAY
             return options.entrySet().toArray(EMPTY_OPTION_ARRAY);
         }
     }

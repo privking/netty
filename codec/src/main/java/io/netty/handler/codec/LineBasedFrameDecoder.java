@@ -35,17 +35,33 @@ import java.util.List;
  */
 public class LineBasedFrameDecoder extends ByteToMessageDecoder {
 
-    /** Maximum length of a frame we're willing to decode.  */
+    /** Maximum length of a frame we're willing to decode.
+     * 解码最大长度
+     * */
     private final int maxLength;
-    /** Whether or not to throw an exception as soon as we exceed maxLength. */
+    /** Whether or not to throw an exception as soon as we exceed maxLength.
+     * 超过最大长度解决策略
+     * true:只要超过长度就立马报错
+     * false:多次累计，报错一次
+     * */
     private final boolean failFast;
+    /**
+     * 是否需要丢弃分隔符
+     */
     private final boolean stripDelimiter;
 
-    /** True if we're discarding input because we're already over maxLength.  */
+    /** True if we're discarding input because we're already over maxLength.
+     * 当为true时，超过maxLength就丢弃数据
+     * */
     private boolean discarding;
+    /**
+     * 已经丢弃的字节数
+     */
     private int discardedBytes;
 
-    /** Last scan position. */
+    /** Last scan position.
+     * 最后一次扫描到下标
+     * */
     private int offset;
 
     /**
@@ -96,23 +112,30 @@ public class LineBasedFrameDecoder extends ByteToMessageDecoder {
      *                          be created.
      */
     protected Object decode(ChannelHandlerContext ctx, ByteBuf buffer) throws Exception {
+        //找到"\n"或"\r\n"下标
         final int eol = findEndOfLine(buffer);
         if (!discarding) {
             if (eol >= 0) {
                 final ByteBuf frame;
+                //计算长度
                 final int length = eol - buffer.readerIndex();
+                //计算分隔符长度
                 final int delimLength = buffer.getByte(eol) == '\r'? 2 : 1;
 
                 if (length > maxLength) {
+                    //读取数据
                     buffer.readerIndex(eol + delimLength);
+                    //报错
                     fail(ctx, length);
                     return null;
                 }
 
                 if (stripDelimiter) {
+                    //读取到frame中
                     frame = buffer.readRetainedSlice(length);
                     buffer.skipBytes(delimLength);
                 } else {
+                    //不丢弃分隔符方式读取
                     frame = buffer.readRetainedSlice(length + delimLength);
                 }
 
@@ -120,6 +143,7 @@ public class LineBasedFrameDecoder extends ByteToMessageDecoder {
             } else {
                 final int length = buffer.readableBytes();
                 if (length > maxLength) {
+                    //丢弃数据
                     discardedBytes = length;
                     buffer.readerIndex(buffer.writerIndex());
                     discarding = true;
@@ -132,6 +156,7 @@ public class LineBasedFrameDecoder extends ByteToMessageDecoder {
             }
         } else {
             if (eol >= 0) {
+                //累计长度
                 final int length = discardedBytes + eol - buffer.readerIndex();
                 final int delimLength = buffer.getByte(eol) == '\r'? 2 : 1;
                 buffer.readerIndex(eol + delimLength);
@@ -165,14 +190,19 @@ public class LineBasedFrameDecoder extends ByteToMessageDecoder {
      * Returns -1 if no end of line was found in the buffer.
      */
     private int findEndOfLine(final ByteBuf buffer) {
+        //获取可读字节数
         int totalLength = buffer.readableBytes();
+        //找到'\n'的下标
         int i = buffer.forEachByte(buffer.readerIndex() + offset, totalLength - offset, ByteProcessor.FIND_LF);
         if (i >= 0) {
+            //找到了下标
             offset = 0;
+            //判断是不是"\r\n"
             if (i > 0 && buffer.getByte(i - 1) == '\r') {
                 i--;
             }
         } else {
+            //没有找到就更新扫描过的下标
             offset = totalLength;
         }
         return i;

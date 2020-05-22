@@ -48,6 +48,7 @@ public class DefaultServerSocketChannelConfig extends DefaultChannelConfig
      */
     public DefaultServerSocketChannelConfig(ServerSocketChannel channel, ServerSocket javaSocket) {
         super(channel);
+        //保存serverSocket
         this.javaSocket = ObjectUtil.checkNotNull(javaSocket, "javaSocket");
     }
 

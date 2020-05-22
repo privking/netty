@@ -137,6 +137,7 @@ public abstract class SingleThreadEventLoop extends SingleThreadEventExecutor im
 
     @Override
     protected boolean hasTasks() {
+        //判断teskqueue和tailqueue是不是空
         return super.hasTasks() || !tailTasks.isEmpty();
     }
 

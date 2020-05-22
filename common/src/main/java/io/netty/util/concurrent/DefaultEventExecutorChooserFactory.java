@@ -39,6 +39,11 @@ public final class DefaultEventExecutorChooserFactory implements EventExecutorCh
         }
     }
 
+    /**
+     * 判断是不是2的n次方
+     * @param val
+     * @return
+     */
     private static boolean isPowerOfTwo(int val) {
         return (val & -val) == val;
     }
@@ -53,6 +58,7 @@ public final class DefaultEventExecutorChooserFactory implements EventExecutorCh
 
         @Override
         public EventExecutor next() {
+            //针对于2的n次方
             return executors[idx.getAndIncrement() & executors.length - 1];
         }
     }
@@ -67,6 +73,7 @@ public final class DefaultEventExecutorChooserFactory implements EventExecutorCh
 
         @Override
         public EventExecutor next() {
+            //针对于不是2的n次方
             return executors[Math.abs(idx.getAndIncrement() % executors.length)];
         }
     }

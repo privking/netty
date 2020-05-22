@@ -64,6 +64,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             SystemPropertyUtil.getBoolean("io.netty.noKeySetOptimization", false);
 
     private static final int MIN_PREMATURE_SELECTOR_RETURNS = 3;
+    //默认512
     private static final int SELECTOR_AUTO_REBUILD_THRESHOLD;
 
     private final IntSupplier selectNowSupplier = new IntSupplier() {
@@ -114,7 +115,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     private Selector selector;
     private Selector unwrappedSelector;
     private SelectedSelectionKeySet selectedKeys;
-
+    //SelectorProvider.provider()
     private final SelectorProvider provider;
 
     private static final long AWAKE = -1L;
@@ -125,7 +126,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     //    NONE             when EL is waiting with no wakeup scheduled
     //    other value T    when EL is waiting with wakeup scheduled at time T
     private final AtomicLong nextWakeupNanos = new AtomicLong(AWAKE);
-
+    //DefaultSelectStrategyFactory.INSTANCE
     private final SelectStrategy selectStrategy;
 
     private volatile int ioRatio = 50;
@@ -137,8 +138,11 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                  EventLoopTaskQueueFactory queueFactory) {
         super(parent, executor, false, newTaskQueue(queueFactory), newTaskQueue(queueFactory),
                 rejectedExecutionHandler);
+        //SelectorProvider.provider()
         this.provider = ObjectUtil.checkNotNull(selectorProvider, "selectorProvider");
+        //DefaultSelectStrategyFactory.INSTANCE
         this.selectStrategy = ObjectUtil.checkNotNull(strategy, "selectStrategy");
+        //SelectorTuple Selectord的包装类，有可能替换了selectedKeys publicSelectedKeys
         final SelectorTuple selectorTuple = openSelector();
         this.selector = selectorTuple.selector;
         this.unwrappedSelector = selectorTuple.unwrappedSelector;
@@ -147,6 +151,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     private static Queue<Runnable> newTaskQueue(
             EventLoopTaskQueueFactory queueFactory) {
         if (queueFactory == null) {
+            //io.netty.eventLoop.maxPendingTasks 配置
+            //如果配置小于16默认16
+            //如果没有配置，默认Integer.MAX_VALUE
+            //创建MpscLinkedQueue
             return newTaskQueue0(DEFAULT_MAX_PENDING_TASKS);
         }
         return queueFactory.newTaskQueue(DEFAULT_MAX_PENDING_TASKS);
@@ -170,15 +178,19 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     private SelectorTuple openSelector() {
         final Selector unwrappedSelector;
         try {
+            //java 原生selector
             unwrappedSelector = provider.openSelector();
         } catch (IOException e) {
             throw new ChannelException("failed to open a new selector", e);
         }
-
+        //io.netty.noKeySetOptimization
+        //默认false
+        //默认不使用原生selector
         if (DISABLE_KEY_SET_OPTIMIZATION) {
             return new SelectorTuple(unwrappedSelector);
         }
-
+        //获取到SelectorImpl
+        //SelectorProvider.openSocketChannel()返回的实例对象就是SocketChannelImpl
         Object maybeSelectorImplClass = AccessController.doPrivileged(new PrivilegedAction<Object>() {
             @Override
             public Object run() {
@@ -192,7 +204,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 }
             }
         });
-
+        //处理返回的异常
         if (!(maybeSelectorImplClass instanceof Class) ||
             // ensure the current selector implementation is what we can instrument.
             !((Class<?>) maybeSelectorImplClass).isAssignableFrom(unwrappedSelector.getClass())) {
@@ -204,8 +216,13 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         }
 
         final Class<?> selectorImplClass = (Class<?>) maybeSelectorImplClass;
+        //自定义set
         final SelectedSelectionKeySet selectedKeySet = new SelectedSelectionKeySet();
 
+        //SelectorImpl有字段
+        //selectedKeys keys publicKeys publicSelectedKeys
+        //都是hashSet
+        //将selectedKeys  publicSelectedKeys 替换为 SelectedSelectionKeySet
         Object maybeException = AccessController.doPrivileged(new PrivilegedAction<Object>() {
             @Override
             public Object run() {
@@ -258,6 +275,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         }
         selectedKeys = selectedKeySet;
         logger.trace("instrumented a special java.util.Set into: {}", unwrappedSelector);
+        //返回替换过后的Selector
         return new SelectorTuple(unwrappedSelector,
                                  new SelectedSelectionKeySetSelector(unwrappedSelector, selectedKeySet));
     }
@@ -321,6 +339,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
     private void register0(SelectableChannel ch, int interestOps, NioTask<?> task) {
         try {
+            //直接调用原生register
             ch.register(unwrappedSelector, interestOps, task);
         } catch (Exception e) {
             throw new EventLoopException("failed to register a channel", e);
@@ -431,6 +450,12 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         }
     }
 
+    /**
+     * 主要做三件事
+     * 1.轮询selector
+     * 2.处理IO事件
+     * 3.处理任务队列
+     */
     @Override
     protected void run() {
         int selectCnt = 0;
@@ -447,13 +472,16 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                         // fall-through to SELECT since the busy-wait is not supported with NIO
 
                     case SelectStrategy.SELECT:
+                        //获取到最近延迟任务的deadline
                         long curDeadlineNanos = nextScheduledTaskDeadlineNanos();
                         if (curDeadlineNanos == -1L) {
+                            //没有延时任务
                             curDeadlineNanos = NONE; // nothing on the calendar
                         }
                         nextWakeupNanos.set(curDeadlineNanos);
                         try {
                             if (!hasTasks()) {
+                                //如果没有任务就执行select
                                 strategy = select(curDeadlineNanos);
                             }
                         } finally {
@@ -476,6 +504,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 selectCnt++;
                 cancelledKeys = 0;
                 needsToSelectAgain = false;
+                //处理IO任务在IO任务和队列任务中的时间占比
                 final int ioRatio = this.ioRatio;
                 boolean ranTasks;
                 if (ioRatio == 100) {
@@ -485,11 +514,14 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                         }
                     } finally {
                         // Ensure we always run tasks.
+                        //runAllTasks() 执行队列中的任务
+                        //执行所有TaskQueue
                         ranTasks = runAllTasks();
                     }
                 } else if (strategy > 0) {
                     final long ioStartTime = System.nanoTime();
                     try {
+                        //处理SelectedKeys
                         processSelectedKeys();
                     } finally {
                         // Ensure we always run tasks.
@@ -497,6 +529,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                         ranTasks = runAllTasks(ioTime * (100 - ioRatio) / ioRatio);
                     }
                 } else {
+                    //runAllTasks()执行队列中的任务
                     ranTasks = runAllTasks(0); // This will run the minimum number of tasks
                 }
 
@@ -506,7 +539,9 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                                 selectCnt - 1, selector);
                     }
                     selectCnt = 0;
+
                 } else if (unexpectedSelectorWakeup(selectCnt)) { // Unexpected wakeup (unusual case)
+                    //规避jdk空轮询bug
                     selectCnt = 0;
                 }
             } catch (CancelledKeyException e) {
@@ -547,6 +582,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             }
             return true;
         }
+        //规避jdkbug
         if (SELECTOR_AUTO_REBUILD_THRESHOLD > 0 &&
                 selectCnt >= SELECTOR_AUTO_REBUILD_THRESHOLD) {
             // The selector returned prematurely many times in a row.
@@ -800,10 +836,13 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
     private int select(long deadlineNanos) throws IOException {
         if (deadlineNanos == NONE) {
+            //没有任务且没有延时任务就阻塞select
             return selector.select();
         }
         // Timeout will only be 0 if deadline is within 5 microsecs
+        //如果截止期在5微秒内，超时将仅为0
         long timeoutMillis = deadlineToDelayNanos(deadlineNanos + 995000L) / 1000000L;
+        //判断timeoutMillis决定使用非阻塞还是超时 select
         return timeoutMillis <= 0 ? selector.selectNow() : selector.select(timeoutMillis);
     }
 

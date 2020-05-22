@@ -53,6 +53,10 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
      * @param nThreads          the number of threads that will be used by this instance.
      * @param executor          the Executor to use, or {@code null} if the default should be used.
      * @param args              arguments which will passed to each {@link #newChild(Executor, Object...)} call
+     *
+     * DefaultEventExecutorChooserFactory.INSTANCE 针对于线程池的选择策略
+     * 当线程数量为2的n次方时next = executors[idx.getAndIncrement() & executors.length - 1]
+     *        不是2的n次方时next = executors[Math.abs(idx.getAndIncrement() % executors.length)]
      */
     protected MultithreadEventExecutorGroup(int nThreads, Executor executor, Object... args) {
         this(nThreads, executor, DefaultEventExecutorChooserFactory.INSTANCE, args);
@@ -73,14 +77,20 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
         }
 
         if (executor == null) {
+            //ThreadPerTaskExecutor Executor的实现
+            //保存了ThreadFactory
+            //execute方法就是开启一个线程
+            //开启的线程为FastThreadLocalRunnable，对Runnable的封装（区别在于结束时清空FastThreadLocal）
+            //定义了Thread的名称
             executor = new ThreadPerTaskExecutor(newDefaultThreadFactory());
         }
-
+        //EventLoopGroup的EventLoop数组
         children = new EventExecutor[nThreads];
 
         for (int i = 0; i < nThreads; i ++) {
             boolean success = false;
             try {
+                //newChild在NioEventLoopGroup中有实现
                 children[i] = newChild(executor, args);
                 success = true;
             } catch (Exception e) {
@@ -107,7 +117,7 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
                 }
             }
         }
-
+        //选择哪一个EventLoop
         chooser = chooserFactory.newChooser(children);
 
         final FutureListener<Object> terminationListener = new FutureListener<Object>() {
@@ -118,7 +128,7 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
                 }
             }
         };
-
+        //添加监听器
         for (EventExecutor e: children) {
             e.terminationFuture().addListener(terminationListener);
         }
@@ -129,6 +139,7 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
     }
 
     protected ThreadFactory newDefaultThreadFactory() {
+        //getClass()->NioEventLoopGroup
         return new DefaultThreadFactory(getClass());
     }
 

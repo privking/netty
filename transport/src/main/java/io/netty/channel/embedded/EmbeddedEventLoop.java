@@ -45,6 +45,7 @@ final class EmbeddedEventLoop extends AbstractScheduledEventExecutor implements 
 
     @Override
     public void execute(Runnable command) {
+        //添加到任务队列
         tasks.add(ObjectUtil.checkNotNull(command, "command"));
     }
 

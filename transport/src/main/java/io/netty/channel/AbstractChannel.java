@@ -69,9 +69,14 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
      *        the parent of this channel. {@code null} if there's no parent.
      */
     protected AbstractChannel(Channel parent) {
+        //保存parent
         this.parent = parent;
+        //生成id
         id = newId();
+        //NioServerSocketChannel--> NioMessageUnsafe
+        //NioSocketChannel-->NioByteUnsafe
         unsafe = newUnsafe();
+        //初始化pipeline,初始化头尾节点
         pipeline = newChannelPipeline();
     }
 
@@ -468,6 +473,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 register0(promise);
             } else {
                 try {
+                    //开启reactor线程
                     eventLoop.execute(new Runnable() {
                         @Override
                         public void run() {
@@ -493,20 +499,25 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                     return;
                 }
                 boolean firstRegistration = neverRegistered;
+                //ServerSocketChannel.register
                 doRegister();
                 neverRegistered = false;
                 registered = true;
 
                 // Ensure we call handlerAdded(...) before we actually notify the promise. This is needed as the
                 // user may already fire events through the pipeline in the ChannelFutureListener.
+                // 回调HandlerAdded
                 pipeline.invokeHandlerAddedIfNeeded();
 
                 safeSetSuccess(promise);
+                //回调channelRegistered
                 pipeline.fireChannelRegistered();
                 // Only fire a channelActive if the channel has never been registered. This prevents firing
                 // multiple channel actives if the channel is deregistered and re-registered.
                 if (isActive()) {
                     if (firstRegistration) {
+                        //回调channelActive
+                        //注册感兴趣事件
                         pipeline.fireChannelActive();
                     } else if (config().isAutoRead()) {
                         // This channel was registered before and autoRead() is set. This means we need to begin read
@@ -547,6 +558,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
             boolean wasActive = isActive();
             try {
+                //真正端口绑定的方法
                 doBind(localAddress);
             } catch (Throwable t) {
                 safeSetFailure(promise, t);
@@ -555,9 +567,11 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             }
 
             if (!wasActive && isActive()) {
+                //添加到任务队列
                 invokeLater(new Runnable() {
                     @Override
                     public void run() {
+                        //回调channelActive,注册感兴趣事件
                         pipeline.fireChannelActive();
                     }
                 });

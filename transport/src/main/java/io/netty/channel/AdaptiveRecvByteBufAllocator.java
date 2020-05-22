@@ -31,6 +31,10 @@ import static java.lang.Math.min;
  * number of readable bytes if the read operation was not able to fill a certain
  * amount of the allocated buffer two times consecutively.  Otherwise, it keeps
  * returning the same prediction.
+ * RecvByteBufAllocator，在反馈时自动增加和减少预测的缓冲区大小。
+ * 如果前面的读操作完全填满了分配的缓冲区，那么它将逐渐增加可读字节的预期数量。
+ * 如果read操作连续两次不能填满分配的缓冲区的一定数量，则它会逐渐减少预期的可读字节数。
+ * 否则，它将不断返回相同的预测。
  */
 public class AdaptiveRecvByteBufAllocator extends DefaultMaxMessagesRecvByteBufAllocator {
 
@@ -151,6 +155,9 @@ public class AdaptiveRecvByteBufAllocator extends DefaultMaxMessagesRecvByteBufA
      * Creates a new predictor with the default parameters.  With the default
      * parameters, the expected buffer size starts from {@code 1024}, does not
      * go down below {@code 64}, and does not go up above {@code 65536}.
+     * 使用默认参数创建一个新的预测器。
+     * 使用默认参数，预期的缓冲区大小从1024开始，
+     * 不会下降到64以下，也不会上升到65536以上。
      */
     public AdaptiveRecvByteBufAllocator() {
         this(DEFAULT_MINIMUM, DEFAULT_INITIAL, DEFAULT_MAXIMUM);

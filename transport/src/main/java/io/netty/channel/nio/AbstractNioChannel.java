@@ -78,9 +78,12 @@ public abstract class AbstractNioChannel extends AbstractChannel {
      */
     protected AbstractNioChannel(Channel parent, SelectableChannel ch, int readInterestOp) {
         super(parent);
+        //ServerSocketChannel
         this.ch = ch;
+        // SelectionKey.OP_ACCEPT
         this.readInterestOp = readInterestOp;
         try {
+            //设置非阻塞
             ch.configureBlocking(false);
         } catch (IOException e) {
             try {
@@ -377,6 +380,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         boolean selected = false;
         for (;;) {
             try {
+                //使用java原生channel注册，设置感兴趣事件为0(没有)，设置附加对象为当前对象
                 selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);
                 return;
             } catch (CancelledKeyException e) {
@@ -408,7 +412,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         }
 
         readPending = true;
-
+        //注册感兴趣事件
         final int interestOps = selectionKey.interestOps();
         if ((interestOps & readInterestOp) == 0) {
             selectionKey.interestOps(interestOps | readInterestOp);

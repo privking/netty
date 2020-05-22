@@ -1603,6 +1603,10 @@ public abstract class ByteBuf implements ReferenceCounted, Comparable<ByteBuf> {
      * This method behaves similarly to {@code readSlice(...).retain()} except that this method may return
      * a buffer implementation that produces less garbage.
      *
+     * 返回从当前readerIndex开始的这个缓冲区的子区域的一个新保留的片，并根据新片的大小(=长度)增加readerIndex。
+     * 注意，这个方法返回一个保留的缓冲区，与readSlice(int)不同。
+     * 这个方法的行为类似于readSlice(…).retain()，只是这个方法可能返回一个产生更少垃圾的缓冲区实现
+     *
      * @param length the size of the new slice
      *
      * @return the newly created slice

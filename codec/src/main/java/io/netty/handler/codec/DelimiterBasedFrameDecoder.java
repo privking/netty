@@ -15,13 +15,13 @@
  */
 package io.netty.handler.codec;
 
-import static io.netty.util.internal.ObjectUtil.checkPositive;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.internal.ObjectUtil;
 
 import java.util.List;
+
+import static io.netty.util.internal.ObjectUtil.checkPositive;
 
 /**
  * A decoder that splits the received {@link ByteBuf}s by one or more
@@ -168,7 +168,7 @@ public class DelimiterBasedFrameDecoder extends ByteToMessageDecoder {
             int maxFrameLength, boolean stripDelimiter, boolean failFast, ByteBuf... delimiters) {
         validateMaxFrameLength(maxFrameLength);
         ObjectUtil.checkNonEmpty(delimiters, "delimiters");
-
+        //判断是不是基于"\n"和"\r\n"
         if (isLineBased(delimiters) && !isSubclass()) {
             lineBasedDecoder = new LineBasedFrameDecoder(maxFrameLength, stripDelimiter, failFast);
             this.delimiters = null;
@@ -227,12 +227,14 @@ public class DelimiterBasedFrameDecoder extends ByteToMessageDecoder {
      */
     protected Object decode(ChannelHandlerContext ctx, ByteBuf buffer) throws Exception {
         if (lineBasedDecoder != null) {
+            //判断是不是lineBasedDecoder
             return lineBasedDecoder.decode(ctx, buffer);
         }
         // Try all delimiters and choose the delimiter which yields the shortest frame.
         int minFrameLength = Integer.MAX_VALUE;
         ByteBuf minDelim = null;
         for (ByteBuf delim: delimiters) {
+            //找到最近的分隔符下标
             int frameLength = indexOf(buffer, delim);
             if (frameLength >= 0 && frameLength < minFrameLength) {
                 minFrameLength = frameLength;
@@ -257,7 +259,7 @@ public class DelimiterBasedFrameDecoder extends ByteToMessageDecoder {
                 }
                 return null;
             }
-
+            //传参问题，分隔符长度大于maxFrameLength
             if (minFrameLength > maxFrameLength) {
                 // Discard read frame.
                 buffer.skipBytes(minFrameLength + minDelimLength);

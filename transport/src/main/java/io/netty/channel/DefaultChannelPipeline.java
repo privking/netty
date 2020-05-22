@@ -199,10 +199,11 @@ public class DefaultChannelPipeline implements ChannelPipeline {
     public final ChannelPipeline addLast(EventExecutorGroup group, String name, ChannelHandler handler) {
         final AbstractChannelHandlerContext newCtx;
         synchronized (this) {
+            //处理是否添加了@Sharable注解
             checkMultiplicity(handler);
-
+            //将handler封装成AbstractChannelHandlerContext
             newCtx = newContext(group, filterName(name, handler), handler);
-
+            //添加都链表当中
             addLast0(newCtx);
 
             // If the registered is false it means that the channel was not registered on an eventLoop yet.
@@ -220,6 +221,8 @@ public class DefaultChannelPipeline implements ChannelPipeline {
                 return this;
             }
         }
+        //回调Handler.handlerAdded
+        //包括删除掉ChannelInitalizer，执行ChannelInitalizer.initChannel()
         callHandlerAdded0(newCtx);
         return this;
     }
@@ -1119,7 +1122,8 @@ public class DefaultChannelPipeline implements ChannelPipeline {
 
     private void callHandlerCallbackLater(AbstractChannelHandlerContext ctx, boolean added) {
         assert !registered;
-
+        //将context封装成PendingHandlerCallback
+        //在添加到pendingHandlerCallbackHead链表尾部
         PendingHandlerCallback task = added ? new PendingHandlerAddedTask(ctx) : new PendingHandlerRemovedTask(ctx);
         PendingHandlerCallback pending = pendingHandlerCallbackHead;
         if (pending == null) {
@@ -1396,7 +1400,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
             ctx.fireChannelActive();
-
+            //注册感兴趣事件在这里完成
             readIfIsAutoRead();
         }
 
@@ -1460,6 +1464,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         void execute() {
             EventExecutor executor = ctx.executor();
             if (executor.inEventLoop()) {
+                //回调HandlerAdded方法
                 callHandlerAdded0(ctx);
             } else {
                 try {

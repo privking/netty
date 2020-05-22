@@ -69,6 +69,10 @@ public class DefaultChannelConfig implements ChannelConfig {
     private volatile boolean pinEventExecutor = true;
 
     public DefaultChannelConfig(Channel channel) {
+        // AdaptiveRecvByteBufAllocator 缓冲区预测
+        // 使用默认参数创建一个新的预测器。
+        // 使用默认参数，预期的缓冲区大小从1024开始，
+        // 不会下降到64以下，也不会上升到65536以上。
         this(channel, new AdaptiveRecvByteBufAllocator());
     }
 

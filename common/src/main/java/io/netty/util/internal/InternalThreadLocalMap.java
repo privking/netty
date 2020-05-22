@@ -68,6 +68,7 @@ public final class InternalThreadLocalMap extends UnpaddedInternalThreadLocalMap
     }
 
     public static InternalThreadLocalMap get() {
+        //拿到当前线程
         Thread thread = Thread.currentThread();
         if (thread instanceof FastThreadLocalThread) {
             return fastGet((FastThreadLocalThread) thread);

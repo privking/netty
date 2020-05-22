@@ -36,7 +36,7 @@ public abstract class AbstractEventExecutor extends AbstractExecutorService impl
 
     static final long DEFAULT_SHUTDOWN_QUIET_PERIOD = 2;
     static final long DEFAULT_SHUTDOWN_TIMEOUT = 15;
-
+    //NioEventLoopGroup
     private final EventExecutorGroup parent;
     private final Collection<EventExecutor> selfCollection = Collections.<EventExecutor>singleton(this);
 
@@ -58,6 +58,8 @@ public abstract class AbstractEventExecutor extends AbstractExecutorService impl
         return this;
     }
 
+
+    //判断当前线程
     @Override
     public boolean inEventLoop() {
         return inEventLoop(Thread.currentThread());

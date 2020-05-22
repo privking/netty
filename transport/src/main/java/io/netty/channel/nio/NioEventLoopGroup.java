@@ -47,6 +47,7 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
     /**
      * Create a new instance using the specified number of threads, {@link ThreadFactory} and the
      * {@link SelectorProvider} which is returned by {@link SelectorProvider#provider()}.
+     * 线程数
      */
     public NioEventLoopGroup(int nThreads) {
         this(nThreads, (Executor) null);
@@ -86,11 +87,18 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
         super(nThreads, threadFactory, selectorProvider, selectStrategyFactory, RejectedExecutionHandlers.reject());
     }
 
+    /**
+     * ServerSocketChannel    就是通过ServerSocketChannel.open()==》
+     * SelectorProvider.provider().openServerSocketChannel()创建的
+     *
+     * DefaultSelectStrategyFactory.INSTANCE --> new DefaultSelectStrategyFactory()
+     */
     public NioEventLoopGroup(
             int nThreads, Executor executor, final SelectorProvider selectorProvider) {
         this(nThreads, executor, selectorProvider, DefaultSelectStrategyFactory.INSTANCE);
     }
 
+   //RejectedExecutionHandlers.reject() 线程池拒绝策略，直接抛异常
     public NioEventLoopGroup(int nThreads, Executor executor, final SelectorProvider selectorProvider,
                              final SelectStrategyFactory selectStrategyFactory) {
         super(nThreads, executor, selectorProvider, selectStrategyFactory, RejectedExecutionHandlers.reject());
@@ -139,6 +147,13 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
         }
     }
 
+    /**
+     * 生成每一个EventLoop
+     * @param executor
+     * @param args
+     * @return
+     * @throws Exception
+     */
     @Override
     protected EventLoop newChild(Executor executor, Object... args) throws Exception {
         EventLoopTaskQueueFactory queueFactory = args.length == 4 ? (EventLoopTaskQueueFactory) args[3] : null;

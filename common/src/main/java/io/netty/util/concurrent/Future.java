@@ -51,6 +51,8 @@ public interface Future<V> extends java.util.concurrent.Future<V> {
      * specified listener is notified when this future is
      * {@linkplain #isDone() done}.  If this future is already
      * completed, the specified listener is notified immediately.
+     * 将指定的侦听器添加到此将来。当这个future完成时，指定的侦听器会得到通知。
+     * 如果这个future已经完成，则会立即通知指定的侦听器。
      */
     Future<V> addListener(GenericFutureListener<? extends Future<? super V>> listener);
 

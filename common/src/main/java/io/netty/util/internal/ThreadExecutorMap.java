@@ -25,7 +25,7 @@ import java.util.concurrent.ThreadFactory;
  * Allow to retrieve the {@link EventExecutor} for the calling {@link Thread}.
  */
 public final class ThreadExecutorMap {
-
+    //保存所有的EventExecutor的映射关系
     private static final FastThreadLocal<EventExecutor> mappings = new FastThreadLocal<EventExecutor>();
 
     private ThreadExecutorMap() { }
@@ -49,6 +49,8 @@ public final class ThreadExecutorMap {
      * when called from within the {@link Runnable} during execution.
      */
     public static Executor apply(final Executor executor, final EventExecutor eventExecutor) {
+        //executor为MultithreadEventExecutorGroup中默认定义或或者是new时传入的，作用就是开启一个线程
+        //并且对把Runnable封装了的
         ObjectUtil.checkNotNull(executor, "executor");
         ObjectUtil.checkNotNull(eventExecutor, "eventExecutor");
         return new Executor() {
@@ -69,6 +71,9 @@ public final class ThreadExecutorMap {
         return new Runnable() {
             @Override
             public void run() {
+                //设置ThreadLocal
+                //以EventExecutor为key的map
+                //并不是真正的ThreadLocal
                 setCurrentEventExecutor(eventExecutor);
                 try {
                     command.run();

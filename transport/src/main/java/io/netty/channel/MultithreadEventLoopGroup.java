@@ -47,6 +47,8 @@ public abstract class MultithreadEventLoopGroup extends MultithreadEventExecutor
 
     /**
      * @see MultithreadEventExecutorGroup#MultithreadEventExecutorGroup(int, Executor, Object...)
+     * 确定线程数，如果没有赋值，看有没有配置io.netty.eventLoopThreads
+     * 没有就是用默认为cpu核心数*2
      */
     protected MultithreadEventLoopGroup(int nThreads, Executor executor, Object... args) {
         super(nThreads == 0 ? DEFAULT_EVENT_LOOP_THREADS : nThreads, executor, args);

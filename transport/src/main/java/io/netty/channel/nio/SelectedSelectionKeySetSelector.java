@@ -21,6 +21,9 @@ import java.nio.channels.Selector;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.Set;
 
+/**
+ * Selector的包装类，主要是替换了SelectedSelectionKeySet的原因
+ */
 final class SelectedSelectionKeySetSelector extends Selector {
     private final SelectedSelectionKeySet selectionKeys;
     private final Selector delegate;

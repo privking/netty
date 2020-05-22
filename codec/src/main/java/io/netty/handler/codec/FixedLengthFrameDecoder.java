@@ -15,12 +15,12 @@
  */
 package io.netty.handler.codec;
 
-import static io.netty.util.internal.ObjectUtil.checkPositive;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.List;
+
+import static io.netty.util.internal.ObjectUtil.checkPositive;
 
 /**
  * A decoder that splits the received {@link ByteBuf}s by the fixed number
@@ -71,8 +71,11 @@ public class FixedLengthFrameDecoder extends ByteToMessageDecoder {
     protected Object decode(
             @SuppressWarnings("UnusedParameters") ChannelHandlerContext ctx, ByteBuf in) throws Exception {
         if (in.readableBytes() < frameLength) {
+            //如果不满指定长度，直接返回null
             return null;
         } else {
+            //会移动读指针
+            //返回子序列
             return in.readRetainedSlice(frameLength);
         }
     }

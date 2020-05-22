@@ -87,13 +87,14 @@ final class SelectedSelectionKeySet extends AbstractSet<SelectionKey> {
     void reset() {
         reset(0);
     }
-
+    //将start到length的值赋值为null
     void reset(int start) {
         Arrays.fill(keys, start, size, null);
         size = 0;
     }
 
     private void increaseCapacity() {
+        //扩容为原来的2倍
         SelectionKey[] newKeys = new SelectionKey[keys.length << 1];
         System.arraycopy(keys, 0, newKeys, 0, size);
         keys = newKeys;

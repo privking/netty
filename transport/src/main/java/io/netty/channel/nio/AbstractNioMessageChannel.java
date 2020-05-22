@@ -39,6 +39,8 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
      * @see AbstractNioChannel#AbstractNioChannel(Channel, SelectableChannel, int)
      */
     protected AbstractNioMessageChannel(Channel parent, SelectableChannel ch, int readInterestOp) {
+        //ch serverSocketChannel
+        //readInterestOp  SelectionKey.OP_ACCEPT 感兴趣事件
         super(parent, ch, readInterestOp);
     }
 
@@ -90,6 +92,9 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
                 int size = readBuf.size();
                 for (int i = 0; i < size; i ++) {
                     readPending = false;
+                    //回调handler.channelRead()
+                    //此pipeline为封装的是handler,不是childHandler
+                    //会在ServerBootstrapt.ServerBootstrapAcceptor中传递给chiledHandler
                     pipeline.fireChannelRead(readBuf.get(i));
                 }
                 readBuf.clear();

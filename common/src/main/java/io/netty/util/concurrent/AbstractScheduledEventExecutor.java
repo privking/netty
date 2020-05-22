@@ -19,12 +19,12 @@ import io.netty.util.internal.DefaultPriorityQueue;
 import io.netty.util.internal.ObjectUtil;
 import io.netty.util.internal.PriorityQueue;
 
-import static io.netty.util.concurrent.ScheduledFutureTask.deadlineNanos;
-
 import java.util.Comparator;
 import java.util.Queue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+
+import static io.netty.util.concurrent.ScheduledFutureTask.deadlineNanos;
 
 /**
  * Abstract base class for {@link EventExecutor}s that want to support scheduling.
@@ -125,8 +125,9 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
      */
     protected final Runnable pollScheduledTask(long nanoTime) {
         assert inEventLoop();
-
+        //拿到第一个scheduleTask
         ScheduledFutureTask<?> scheduledTask = peekScheduledTask();
+        //判断是否到执行时间
         if (scheduledTask == null || scheduledTask.deadlineNanos() - nanoTime > 0) {
             return null;
         }

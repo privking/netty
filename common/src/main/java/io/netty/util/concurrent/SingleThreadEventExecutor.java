@@ -49,6 +49,8 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  */
 public abstract class SingleThreadEventExecutor extends AbstractScheduledEventExecutor implements OrderedEventExecutor {
 
+    //io.netty.eventexecutor.maxPendingTasks参数配置，没有配置则为Integer.MAX_VALUE
+    //参数配置没有16大则选择16
     static final int DEFAULT_MAX_PENDING_EXECUTOR_TASKS = Math.max(16,
             SystemPropertyUtil.getInt("io.netty.eventexecutor.maxPendingTasks", Integer.MAX_VALUE));
 
@@ -167,6 +169,8 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         super(parent);
         this.addTaskWakesUp = addTaskWakesUp;
         this.maxPendingTasks = DEFAULT_MAX_PENDING_EXECUTOR_TASKS;
+        //获取到的executor作用还是开启一个线程，只不过在FastThreadLocal中添加了eventExecutor
+        //this NioEventLoop
         this.executor = ThreadExecutorMap.apply(executor, this);
         this.taskQueue = ObjectUtil.checkNotNull(taskQueue, "taskQueue");
         this.rejectedExecutionHandler = ObjectUtil.checkNotNull(rejectedHandler, "rejectedHandler");
@@ -279,12 +283,14 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         if (scheduledTaskQueue == null || scheduledTaskQueue.isEmpty()) {
             return true;
         }
+        //nanoTime= currentTime-startTime
         long nanoTime = AbstractScheduledEventExecutor.nanoTime();
         for (;;) {
             Runnable scheduledTask = pollScheduledTask(nanoTime);
             if (scheduledTask == null) {
                 return true;
             }
+            //添加到taskQueue
             if (!taskQueue.offer(scheduledTask)) {
                 // No space left in the task queue add it back to the scheduledTaskQueue so we pick it up again.
                 scheduledTaskQueue.add((ScheduledFutureTask<?>) scheduledTask);
@@ -458,9 +464,12 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
      * the tasks in the task queue and returns if it ran longer than {@code timeoutNanos}.
      */
     protected boolean runAllTasks(long timeoutNanos) {
+        //将到达执行时间的延时任务添加到TaskQueue
         fetchFromScheduledTaskQueue();
+        //从TaskQueue中拿到第一个task
         Runnable task = pollTask();
         if (task == null) {
+            //执行tailTask
             afterRunningAllTasks();
             return false;
         }
@@ -469,12 +478,14 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         long runTasks = 0;
         long lastExecutionTime;
         for (;;) {
+            //task.run()
             safeExecute(task);
 
             runTasks ++;
 
             // Check timeout every 64 tasks because nanoTime() is relatively expensive.
             // XXX: Hard-coded value - will make it configurable if it is really a problem.
+            //每64个任务检查一次timeout，因为nanoTime()比较昂贵
             if ((runTasks & 0x3F) == 0) {
                 lastExecutionTime = ScheduledFutureTask.nanoTime();
                 if (lastExecutionTime >= deadline) {
@@ -488,7 +499,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                 break;
             }
         }
-
+        //执行tailTask
         afterRunningAllTasks();
         this.lastExecutionTime = lastExecutionTime;
         return true;
@@ -824,9 +835,12 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
     }
 
     private void execute(Runnable task, boolean immediate) {
+        //判断当前线程是不是变量中保存的Thread
         boolean inEventLoop = inEventLoop();
+        //添加到taskQueue中
         addTask(task);
         if (!inEventLoop) {
+            //开启线程
             startThread();
             if (isShutdown()) {
                 boolean reject = false;
@@ -975,9 +989,11 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
     private void doStartThread() {
         assert thread == null;
+        //executor真正开启线程的Executor
         executor.execute(new Runnable() {
             @Override
             public void run() {
+                //当前新开启的线程为Reactor线程，将该线程保存在thread中
                 thread = Thread.currentThread();
                 if (interrupted) {
                     thread.interrupt();
@@ -986,6 +1002,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                 boolean success = false;
                 updateLastExecutionTime();
                 try {
+                    //NioEventLoop中run重写
                     SingleThreadEventExecutor.this.run();
                     success = true;
                 } catch (Throwable t) {

@@ -931,6 +931,7 @@ public final class PlatformDependent {
         }
 
         static <T> Queue<T> newMpscQueue() {
+            //MpscLinkedQueue是一种针对Netty中NIO任务设计的一种队列，适用于有多个生产者，只有一个消费者的队列
             return USE_MPSC_CHUNKED_ARRAY_QUEUE ? new MpscUnboundedArrayQueue<T>(MPSC_CHUNK_SIZE)
                                                 : new MpscUnboundedAtomicArrayQueue<T>(MPSC_CHUNK_SIZE);
         }
